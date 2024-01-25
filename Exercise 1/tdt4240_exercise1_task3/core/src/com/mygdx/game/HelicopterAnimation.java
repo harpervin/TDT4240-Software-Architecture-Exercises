@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 
 import java.util.Arrays;
 import java.util.List;
@@ -29,8 +30,13 @@ public class HelicopterAnimation extends ApplicationAdapter {
 	float speed = 600.0f; // Adjust the speed as needed
 
 	boolean rotatedX = false;
+	boolean rotatedY = false;
 
 	List<Sprite> allSprites;
+	List<Float> speeds;  // List to store individual speeds for each helicopter
+	List<Boolean> rotatedXFlags;  // List to store rotatedX flags for each helicopter
+
+
 
 	@Override
 	public void create() {
@@ -80,7 +86,13 @@ public class HelicopterAnimation extends ApplicationAdapter {
 		//allSprites = Arrays.asList(helicopterSprite);
 
 		allSprites = Arrays.asList(helicopterSprite, helicopterSprite2, helicopterSprite3, helicopterSprite4);
+		// Initialize speeds and rotatedX flags
+		speeds = Arrays.asList(MathUtils.random(1, 7) * 100.0f,  // Adjust these speeds as needed
+				MathUtils.random(1, 35) * 20.0f,
+				MathUtils.random(1, 35) * 20.0f,
+				MathUtils.random(1, 35) * 20.0f);
 
+		rotatedXFlags = Arrays.asList(false, false, false, false);
 	}
 
 	@Override
@@ -100,13 +112,14 @@ public class HelicopterAnimation extends ApplicationAdapter {
 		helicopterSprite3.setRegion(currentFrame);
 		helicopterSprite4.setRegion(currentFrame);
 
-		for (Sprite sprite : allSprites) {
+		for (int i = 0; i < allSprites.size(); i++) {
+			Sprite sprite = allSprites.get(i);
 			sprite.setRegion(currentFrame);
 			sprite.draw(batch);
-			moveHelicopter(sprite);
+			moveHelicopter(sprite, speeds.get(i));
 
 		}
-		//handleCollision();
+		handleCollision();
 
 		batch.end();
 	}
@@ -123,19 +136,67 @@ public class HelicopterAnimation extends ApplicationAdapter {
 				Rectangle bounds2 = sprite_j.getBoundingRectangle();
 
 				if (bounds1.overlaps(bounds2)) {
-					// Bounce off each other
-					sprite_i.setRotation(180 + sprite_i.getRotation());
-					sprite_j.setRotation(180 - sprite_j.getRotation());
+					bounceOff(sprite_i, sprite_j);
 				}
 			}
 		}
 	}
 
+	private void bounceOff(Sprite sprite1, Sprite sprite2) {
+		// Get the angles of both sprites
+		float angle1 = sprite1.getRotation();
+		float angle2 = sprite2.getRotation();
 
-	private void moveHelicopter(Sprite helicopterSprite) {
+		// Calculate the average angle
+		float averageAngle = (angle1 + angle2) / 2.0f;
+
+		// Calculate the relative direction vector
+		Vector2 relativeDirection = new Vector2(sprite2.getX() - sprite1.getX(), sprite2.getY() - sprite1.getY()).nor();
+
+		// Calculate the reflection direction based on relative direction
+		float reflectionAngle1 = 2 * relativeDirection.angleRad() - angle1;
+		float reflectionAngle2 = 2 * relativeDirection.angleRad() - angle2;
+
+		// Update the rotation angles of the sprites
+		sprite1.setRotation(averageAngle + reflectionAngle1);
+		sprite2.setRotation(averageAngle + reflectionAngle2);
+
+		// Calculate the separation vector
+		Vector2 separationVector = new Vector2(sprite1.getX() - sprite2.getX(), sprite1.getY() - sprite2.getY());
+
+		// Normalize the separation vector
+		separationVector.nor();
+
+		// Move the sprites slightly apart to avoid repeated collisions
+		float overlapDistance = 2.0f;
+		sprite1.setX(sprite1.getX() + separationVector.x * overlapDistance);
+		sprite1.setY(sprite1.getY() + separationVector.y * overlapDistance);
+
+		sprite2.setX(sprite2.getX() - separationVector.x * overlapDistance);
+		sprite2.setY(sprite2.getY() - separationVector.y * overlapDistance);
+
+		// Limit the rotation angles to avoid indefinite spinning
+		limitRotation(sprite1);
+		limitRotation(sprite2);
+	}
+
+	// Add this method to limit the rotation angles
+	private void limitRotation(Sprite sprite) {
+		float rotation = sprite.getRotation();
+
+		// Limit the rotation to a reasonable range, for example, [0, 360)
+		if (rotation < 0) {
+			sprite.setRotation(rotation + 360);
+		} else if (rotation >= 360) {
+			sprite.setRotation(rotation - 360);
+		}
+	}
+
+	private void moveHelicopter(Sprite helicopterSprite, float speed) {
 		float sprite_x = helicopterSprite.getX();
 		float sprite_y = helicopterSprite.getY();
 		float sprite_rotation = helicopterSprite.getRotation();
+
 
 		float new_x = sprite_x + MathUtils.cosDeg(sprite_rotation) * speed * Gdx.graphics.getDeltaTime();
 		float new_y = sprite_y + MathUtils.sinDeg(sprite_rotation) * speed * Gdx.graphics.getDeltaTime();
@@ -143,18 +204,15 @@ public class HelicopterAnimation extends ApplicationAdapter {
 		helicopterSprite.setX(new_x);
 		helicopterSprite.setY(new_y);
 
-		bounceOffEdges(helicopterSprite);
+		bounceOffEdges(helicopterSprite, speed);
 	}
 
-	private void bounceOffEdges(Sprite helicopterSprite) {
+	private void bounceOffEdges(Sprite helicopterSprite, float speed) {
 		float velocityX = MathUtils.cosDeg(helicopterSprite.getRotation()) * speed * Gdx.graphics.getDeltaTime();
 		float velocityY = MathUtils.sinDeg(helicopterSprite.getRotation()) * speed * Gdx.graphics.getDeltaTime();
 
 		if (helicopterSprite.getX() < 0 && velocityX < 0 || helicopterSprite.getX() + helicopterSprite.getWidth() > Gdx.graphics.getWidth() && velocityX > 0) {
 			if (!rotatedX) {
-				System.out.println("Hit x border");
-				System.out.println("old rotation: " + helicopterSprite.getRotation());
-
 				if (180 < helicopterSprite.getRotation()) {
 					float difference = helicopterSprite.getRotation() - 180;
 					helicopterSprite.setRotation(360 - difference);
@@ -164,49 +222,22 @@ public class HelicopterAnimation extends ApplicationAdapter {
 				}
 				rotatedX = true;
 
-				System.out.println("new rotation: " + helicopterSprite.getRotation());
 			}
 		} else {
 			// Reset the flag when the helicopter is no longer at the x border
 			rotatedX = false;
 		}
 
-		if (helicopterSprite.getY() < 0 || helicopterSprite.getY() + helicopterSprite.getHeight() > Gdx.graphics.getHeight()) {
-			System.out.println("Hit y border");
-			System.out.println("old rotation: " + helicopterSprite.getRotation());
-			helicopterSprite.setRotation(360 - helicopterSprite.getRotation());
-			System.out.println("new rotation: " + helicopterSprite.getRotation());
+		if (helicopterSprite.getY() < 0  && velocityY < 0 || helicopterSprite.getY() + helicopterSprite.getHeight() > Gdx.graphics.getHeight() && velocityY > 0) {
+			if (!rotatedY) {
+				helicopterSprite.setRotation(360 - helicopterSprite.getRotation());
+				rotatedX = true;
+			}
+			else {
+				rotatedY = false;
+			}
 		}
 	}
-
-//	private void bounceOffEdges(Sprite helicopterSprite) {
-//
-//		if (helicopterSprite.getX() < 0 ||
-//				helicopterSprite.getX() + helicopterSprite.getWidth() > Gdx.graphics.getWidth()) {
-//			System.out.println("Hit x border");
-//
-//			System.out.println("old rotation: " + helicopterSprite.getRotation());
-//			if (180 < helicopterSprite.getRotation()) {
-//				float difference = helicopterSprite.getRotation() - 180;
-//				helicopterSprite.setRotation(360 - difference);
-//			}
-//			else {
-//				helicopterSprite.setRotation(180 - helicopterSprite.getRotation());
-//			}
-//
-//			System.out.println("new rotation: " + helicopterSprite.getRotation());
-//		}
-//
-//		if (helicopterSprite.getY() < 0 ||
-//				helicopterSprite.getY() + helicopterSprite.getHeight() > Gdx.graphics.getHeight()) {
-//			System.out.println("Hit y border");
-//
-//			System.out.println("old rotation: " + helicopterSprite.getRotation());
-//			helicopterSprite.setRotation(360 - helicopterSprite.getRotation());
-//
-//			System.out.println("new rotation: " + helicopterSprite.getRotation());
-//		}
-//	}
 
 	private void setRandomPosition(Sprite sprite) {
 		float randomX = MathUtils.random(Gdx.graphics.getWidth() - sprite.getWidth());
