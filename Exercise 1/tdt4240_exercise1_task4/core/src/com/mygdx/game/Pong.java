@@ -39,7 +39,7 @@ public class Pong extends ApplicationAdapter {
 
 	float red_x, red_y, blue_x, blue_y;
 	float ballRotation;
-	float speed = 400.0f; // Adjust the speed as needed
+	float speed = 500.0f; // Adjust the speed as needed
 	int redScore, blueScore;
 
 	float lastTouchX;
@@ -59,11 +59,11 @@ public class Pong extends ApplicationAdapter {
 		timer = 0.0f;
 
 
-		red_object = new Pixmap(100, 40, Pixmap.Format.RGBA8888);
+		red_object = new Pixmap(150, 40, Pixmap.Format.RGBA8888);
 		red_object.setColor(Color.RED);
 		red_object.fill();
 
-		blue_object = new Pixmap(100, 40, Pixmap.Format.RGBA8888);
+		blue_object = new Pixmap(150, 40, Pixmap.Format.RGBA8888);
 		blue_object.setColor(Color.BLUE);
 		blue_object.fill();
 
@@ -135,7 +135,12 @@ public class Pong extends ApplicationAdapter {
 					float deltaX = screenX - lastTouchX;
 
 					// Update the position of the dragged sprite
-					draggedSprite.setX(draggedSprite.getX() + deltaX);
+					float newSpriteX = draggedSprite.getX() + deltaX;
+
+					// Ensure the sprite stays within the x borders
+					if (newSpriteX >= 0 && newSpriteX <= Gdx.graphics.getWidth() - draggedSprite.getWidth()) {
+						draggedSprite.setX(newSpriteX);
+					}
 
 					// Save the current touch/mouse coordinates for the next frame
 					lastTouchX = screenX;
@@ -249,6 +254,7 @@ public class Pong extends ApplicationAdapter {
 
 		// Limit the rotation angles to avoid indefinite spinning
 		limitRotation(ballSprite);
+		System.out.println(speed);
 	}
 
 	// Add this method to limit the rotation angles
