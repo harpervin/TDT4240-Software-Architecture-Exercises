@@ -49,10 +49,15 @@ public class Pong extends ApplicationAdapter {
 	boolean rotatedY = false;
 	Sprite draggedSprite;
 
+	private float timer;  // Timer to track the time since the last score
+
 
 	@Override
 	public void create() {
 		batch = new SpriteBatch();
+
+		timer = 0.0f;
+
 
 		red_object = new Pixmap(100, 40, Pixmap.Format.RGBA8888);
 		red_object.setColor(Color.RED);
@@ -159,7 +164,8 @@ public class Pong extends ApplicationAdapter {
 		// Start render
 		batch.begin();
 
-		checkScore();
+		// Update the timer
+		timer += Gdx.graphics.getDeltaTime();
 
 		redSprite.draw(batch);
 		blueSprite.draw(batch);
@@ -168,13 +174,32 @@ public class Pong extends ApplicationAdapter {
 		// Draw the position text in the upper-left corner
 		redFont.draw(batch, "Red: " + Integer.toString(redScore), 20.0f, Gdx.graphics.getHeight() - 20);
 
+		int prevRedScore = redScore;
+		int prevBlueScore = blueScore;
+
 		moveBall();
+
+		// Check if more than 10 seconds have passed without scoring
+		if (timer > 10.0f && prevRedScore == redScore && prevBlueScore == blueScore) {
+			// Reset the timer
+			timer = 0.0f;
+
+			// Generate a random angle in the specified ranges
+			float randomAngle = MathUtils.randomBoolean() ?
+					MathUtils.random(45, 135) :
+					MathUtils.random(225, 315);
+
+			ballSprite.setRotation(randomAngle);
+		}
+
+		checkScore();
 
 		// Draw the position text in the bottom-left corner
 		blueFont.draw(batch, "Blue: " + Integer.toString(blueScore), 20.0f, 100.0f);
 
 
 		bounceOffPlayer();
+
 
 		batch.end();
 	}
