@@ -16,17 +16,14 @@ public class HelicopterWithControls extends ApplicationAdapter {
 	SpriteBatch batch;
 	Sprite helicopterSprite;
 	Texture helicopterTexture;
+	Vector2 dragStartPosition;
 
-	Texture joystickTexture;
-	Sprite joystickSprite;
-	Vector2 joystickPosition;
-	Vector2 joystickCenter; // Center of the joystick
 
 	BitmapFont font;
 
 	float heli_x, heli_y;
 	float heliRotation;
-	float speed = 200.0f; // Adjust the speed as needed
+	float speed = 400.0f; // Adjust the speed as needed
 
 	@Override
 	public void create() {
@@ -46,25 +43,11 @@ public class HelicopterWithControls extends ApplicationAdapter {
 		helicopterSprite.flip(true, false);
 		helicopterSprite.setRotation(0f);
 
-		// Set joystick size (adjust as needed)
-		float joystickSize = 400.0f;
-		joystickTexture = new Texture("joystick.jpg");
-		joystickSprite = new Sprite(joystickTexture);
-
-		joystickSprite.setSize(joystickSize, joystickSize);
-
-		// Position the joystick base at the bottom left corner
-		joystickSprite.setPosition(20, 20);
-
-		// Initialize the joystick position at the center of the base
-		joystickCenter = new Vector2(joystickSprite.getX() + joystickSprite.getWidth() / 2,
-				joystickSprite.getY() + joystickSprite.getHeight() / 2);
-		joystickPosition = new Vector2(joystickCenter);
-
 		// Create a BitmapFont for rendering text
 		font = new BitmapFont();
 		font.getData().setScale(4.0f);  // Adjust the scale factor as needed
 
+		dragStartPosition = new Vector2();
 	}
 
 	@Override
@@ -77,14 +60,14 @@ public class HelicopterWithControls extends ApplicationAdapter {
 		// Start render
 		batch.begin();
 
-		// Update joystick position
-		updateJoystick();
-
-		// Draw the joystick base
-		joystickSprite.draw(batch);
+		// Handle drag input
+		handleInput();
 
 		// Draw the helicopter with rotation
 		helicopterSprite.draw(batch);
+
+		// Draw the position text in the upper-left corner
+		font.draw(batch, "Click and drag the helicopter to move it!", 30, Gdx.graphics.getHeight() - 500);
 
 		// Draw the position text in the upper-left corner
 		font.draw(batch, "Position: " + heli_x + ", " + heli_y, 20, Gdx.graphics.getHeight() - 20);
@@ -92,28 +75,25 @@ public class HelicopterWithControls extends ApplicationAdapter {
 		batch.end();
 	}
 
-	private void updateJoystick() {
-		// Update joystick position based on touch input
-		if (Gdx.input.isTouched()) {
-			float touchX = Gdx.input.getX();
-			float touchY = Gdx.graphics.getHeight() - Gdx.input.getY(); // Invert Y-axis
+	private void handleInput() {
+		if (Gdx.input.justTouched()) {
+			// Save the starting position when clicked
+			dragStartPosition.set(Gdx.input.getX(), Gdx.graphics.getHeight() - Gdx.input.getY());
+		}
 
-			// Check if the touch is within the joystick base
-			if (touchX >= joystickSprite.getX() && touchX <= joystickSprite.getX() + joystickSprite.getWidth() &&
-					touchY >= joystickSprite.getY() && touchY <= joystickSprite.getY() + joystickSprite.getHeight()) {
-				joystickPosition.set(touchX, touchY);
-				// Move the helicopter based on joystick position
-				moveHelicopter();
-			} else {
-				// If no input, reset joystick position to the center
-				joystickPosition.set(joystickCenter);
-			}
+		if (Gdx.input.isTouched()) {
+			// Move the helicopter based on the drag
+			moveHelicopter();
 		}
 	}
 
 	private void moveHelicopter() {
-		// Calculate the direction vector from the joystick center to the joystick position
-		Vector2 direction = new Vector2(joystickPosition.x - joystickCenter.x, joystickPosition.y - joystickCenter.y);
+		float touchX = Gdx.input.getX();
+		float touchY = Gdx.graphics.getHeight() - Gdx.input.getY(); // Invert Y-axis
+
+		// Calculate the direction vector from the helicopter center to the touch position
+		Vector2 direction = new Vector2(touchX - (heli_x + helicopterSprite.getWidth() / 2),
+				touchY - (heli_y + helicopterSprite.getHeight() / 2));
 
 		// Normalize the direction vector
 		direction.nor();
@@ -155,6 +135,5 @@ public class HelicopterWithControls extends ApplicationAdapter {
 	public void dispose() {
 		batch.dispose();
 		helicopterSprite.getTexture().dispose();
-		joystickSprite.getTexture().dispose();
 	}
 }
